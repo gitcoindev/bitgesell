@@ -9,7 +9,6 @@
 
 import enum
 import unittest
-import sha3
 from .script import hash256, hash160, sha256, CScript, OP_0
 from .segwit_addr import encode_segwit_address
 from .util import assert_equal
@@ -108,7 +107,7 @@ def program_to_witness(version, program, main=False):
 
 def script_to_p2wsh(script, main=False):
     script = check_script(script)
-    return program_to_witness(0, sha256(script), main)
+    return program_to_witness(0, hash256(script), main)
 
 def key_to_p2wpkh(key, main=False):
     key = check_key(key)
@@ -116,7 +115,7 @@ def key_to_p2wpkh(key, main=False):
 
 def script_to_p2sh_p2wsh(script, main=False):
     script = check_script(script)
-    p2shscript = CScript([OP_0, sha256(script)])
+    p2shscript = CScript([OP_0, hash256(script)])
     return script_to_p2sh(p2shscript, main)
 
 def check_key(key):

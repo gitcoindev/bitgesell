@@ -16,6 +16,7 @@ from test_framework.blocktools import (
     get_witness_script,
     NORMAL_GBT_REQUEST_PARAMS,
     TIME_GENESIS_BLOCK,
+    witness_script,
 )
 from test_framework.messages import (
     CBlock,
@@ -29,6 +30,8 @@ from test_framework.util import (
     assert_equal,
     assert_raises_rpc_error,
 )
+from test_framework.wallet import MiniWallet
+
 
 VERSIONBITS_TOP_BITS = 0x20000000
 VERSIONBITS_DEPLOYMENT_TESTDUMMY_BIT = 28
@@ -58,7 +61,7 @@ class MiningTest(BGLTestFramework):
         self.log.info('Create some old blocks')
         for t in range(TIME_GENESIS_BLOCK, TIME_GENESIS_BLOCK + 200 * 600, 600):
             self.nodes[0].setmocktime(t)
-            self.generate(self.nodes[0], 1, sync_fun=self.no_op)
+            self.generate(self.wallet, 1, sync_fun=self.no_op)
         mining_info = self.nodes[0].getmininginfo()
         assert_equal(mining_info['blocks'], 200)
         assert_equal(mining_info['currentblocktx'], 0)
@@ -75,8 +78,9 @@ class MiningTest(BGLTestFramework):
         self.connect_nodes(0, 1)
 
     def run_test(self):
-        self.mine_chain()
         node = self.nodes[0]
+        self.wallet = MiniWallet(node)
+        self.mine_chain()
 
         def assert_submitblock(block, result_str_1, result_str_2=None):
             block.solve()
@@ -87,16 +91,22 @@ class MiningTest(BGLTestFramework):
         self.log.info('getmininginfo')
         mining_info = node.getmininginfo()
         assert_equal(mining_info['blocks'], 200)
-        assert_equal(mining_info['chain'], 'regtest')
+        assert_equal(mining_info['chain'], self.chain)
         assert 'currentblocktx' not in mining_info
         assert 'currentblockweight' not in mining_info
         assert_equal(mining_info['difficulty'], Decimal('4.656542373906925E-10'))
         assert_equal(mining_info['networkhashps'], Decimal('0.003333333333333334'))
         assert_equal(mining_info['pooledtx'], 0)
-
+        self.log.info("node mining info")
+        import pprint
+        self.log.info(pprint.pprint(mining_info))
         self.log.info("getblocktemplate: Test default witness commitment")
-        txid = int(node.sendtoaddress(node.getnewaddress(), 1), 16)
+        txid = int(self.wallet.send_self_transfer(from_node=node)['wtxid'], 16)
+        self.log.info("txid")
+        self.log.info(txid)
         tmpl = node.getblocktemplate(NORMAL_GBT_REQUEST_PARAMS)
+        self.log.info("tmpl")
+        self.log.info(tmpl)
 
         # Check that default_witness_commitment is present.
         assert 'default_witness_commitment' in tmpl
@@ -106,6 +116,12 @@ class MiningTest(BGLTestFramework):
         witness_root = CBlock.get_merkle_root([ser_uint256(0),
                                                ser_uint256(txid)])
         script = get_witness_script(witness_root, 0)
+        self.log.info("witness commitment")
+        self.log.info(witness_commitment)
+        self.log.info("witness root")
+        self.log.info(witness_root)
+        self.log.info("script")
+        self.log.info(witness_script)
         assert_equal(witness_commitment, script.hex())
 
         # Mine a block to leave initial block download and clear the mempool

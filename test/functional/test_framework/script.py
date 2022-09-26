@@ -774,10 +774,10 @@ def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpa
     else:
         ss += struct.pack("<I", input_index)
     if (spend_type & 1):
-        ss += sha256(ser_string(annex))
+        ss += hash256(ser_string(annex))
     if out_type == SIGHASH_SINGLE:
         if input_index < len(txTo.vout):
-            ss += sha256(txTo.vout[input_index].serialize())
+            ss += hash256(txTo.vout[input_index].serialize())
         else:
             ss += bytes(0 for _ in range(32))
     if (scriptpath):

@@ -90,6 +90,18 @@ class MiniWallet:
     def _create_utxo(self, *, txid, vout, value, height):
         return {"txid": txid, "vout": vout, "value": value, "height": height}
 
+    def _bulk_tx(self, tx, target_weight):
+        """Pad a transaction with extra outputs until it reaches a target weight (or higher).
+        returns the tx
+        """
+        tx.vout.append(CTxOut(nValue=0, scriptPubKey=CScript([OP_RETURN, b'a'])))
+        dummy_vbytes = (target_weight - tx.get_weight() + 3) // 4
+        tx.vout[-1].scriptPubKey = CScript([OP_RETURN, b'a' * dummy_vbytes])
+        # Lower bound should always be off by at most 3
+        assert_greater_than_or_equal(tx.get_weight(), target_weight)
+        # Higher bound should always be off by at most 3 + 12 weight (for encoding the length)
+        assert_greater_than_or_equal(target_weight + 15, tx.get_weight())
+
     def get_balance(self):
         return sum(u['value'] for u in self._utxos)
 
@@ -184,6 +196,10 @@ class MiniWallet:
     def send_self_transfer(self, *, from_node, **kwargs):
         """Create and send a tx with the specified fee_rate. Fee may be exact or at most one satoshi higher than needed."""
         tx = self.create_self_transfer(**kwargs)
+        import pprint
+        print("send self transfer tx")
+        pprint.pprint(tx)
+
         self.sendrawtransaction(from_node=from_node, tx_hex=tx['hex'])
         return tx
 
@@ -209,9 +225,8 @@ class MiniWallet:
     def send_self_transfer_multi(self, *, from_node, **kwargs):
         """Call create_self_transfer_multi and send the transaction."""
         tx = self.create_self_transfer_multi(**kwargs)
-        txid = self.sendrawtransaction(from_node=from_node, tx_hex=tx.serialize().hex())
-        return {'new_utxos': [self.get_utxo(txid=txid, vout=vout) for vout in range(len(tx.vout))],
-                'txid': txid, 'hex': tx.serialize().hex(), 'tx': tx}
+        self.sendrawtransaction(from_node=from_node, tx_hex=tx["hex"])
+        return tx
 
     def create_self_transfer_multi(
         self,
@@ -221,6 +236,7 @@ class MiniWallet:
         amount_per_output=0,
         sequence=0,
         fee_per_output=1000,
+        target_weight=0
     ):
         """
         Create and return a transaction that spends the given UTXOs and creates a
@@ -251,6 +267,10 @@ class MiniWallet:
         outputs_value_total = inputs_value_total - fee_per_output * num_outputs
         for o in tx.vout:
             o.nValue = amount_per_output or (outputs_value_total // num_outputs)
+
+        if target_weight:
+            self._bulk_tx(tx, target_weight)
+
         txid = tx.rehash()
         return {
             "new_utxos": [self._create_utxo(
@@ -298,6 +318,7 @@ class MiniWallet:
 
     def sendrawtransaction(self, *, from_node, tx_hex, maxfeerate=0, **kwargs):
         txid = from_node.sendrawtransaction(hexstring=tx_hex, maxfeerate=maxfeerate, **kwargs)
+        print("sent raw transaction, trying to decode it...")
         self.scan_tx(from_node.decoderawtransaction(tx_hex))
         return txid
 
