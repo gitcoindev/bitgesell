@@ -2082,6 +2082,9 @@ void PeerManagerImpl::ProcessHeadersMessage(CNode& pfrom, const Peer& peer,
         uint256 hashLastBlock;
         for (const CBlockHeader& header : headers) {
             if (!hashLastBlock.IsNull() && header.hashPrevBlock != hashLastBlock) {
+                LogPrint(BCLog::NET, "hashPrevBlock=%x\n", header.hashPrevBlock.GetHex());
+                LogPrint(BCLog::NET, "hashLastBlock=%x\n", hashLastBlock.GetHex());
+                
                 Misbehaving(pfrom.GetId(), 20, "non-continuous headers sequence");
                 return;
             }
