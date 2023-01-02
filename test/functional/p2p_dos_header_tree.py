@@ -66,7 +66,6 @@ class RejectLowDifficultyHeadersTest(BGLTestFramework):
         self.restart_node(0, extra_args=['-nocheckpoints'])
         peer_no_checkpoint = self.nodes[0].add_p2p_connection(P2PInterface())
         peer_no_checkpoint.send_and_ping(msg_headers(self.headers_fork))
-        self.log.debug(self.nodes[0].getchaintips())
         assert {
             "height": 2,
             "hash": "00026d186a158d1afe0f7c46c66db4e8284ed43f87bfb55000b0100892bc026c",
