@@ -43,25 +43,12 @@ class RejectLowDifficultyHeadersTest(BGLTestFramework):
         self.headers_fork = [l[len(FORK_PREFIX):] for l in h_lines if l.startswith(FORK_PREFIX)]
 
         self.headers = [from_hex(CBlockHeader(), h) for h in self.headers]
-        self.log.debug("First two decoded headers")
-        
-        for h in self.headers[:2]:
-            self.log.debug(h)
-        self.log.debug("First two decoded fork headers")
-
         self.headers_fork = [from_hex(CBlockHeader(), h) for h in self.headers_fork]
-        
-        for h in self.headers_fork[:2]:
-            self.log.debug(h)
-
-        import copy
 
         self.log.info("Feed all non-fork headers, including and up to the first checkpoint")
         peer_checkpoint = self.nodes[0].add_p2p_connection(P2PInterface())
         peer_checkpoint.send_and_ping(msg_headers(self.headers))
-        self.log.debug("#####################################")
-        self.log.debug(self.nodes[0].getchaintips())
-       
+
         assert {
             'height': 546,
             'hash': '000000033f0ecd6bc1c46eb98a2856cf2fe48bc3e90ef11ac24ea5272c1adbf8',
@@ -71,9 +58,6 @@ class RejectLowDifficultyHeadersTest(BGLTestFramework):
 
         self.log.info("Feed all fork headers (fails due to checkpoint)")
         with self.nodes[0].assert_debug_log(['bad-fork-prior-to-checkpoint']):
-        #with self.nodes[0].assert_debug_log(['missing prev block']):
-            self.log.debug('checking bad-fork-prior-to-checkpoint found correctly')
-            self.log.debug(self.headers_fork)
             peer_checkpoint.send_message(msg_headers(self.headers_fork))
             peer_checkpoint.wait_for_disconnect()
 
