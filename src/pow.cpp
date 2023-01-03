@@ -7,6 +7,7 @@
 
 #include <cstdio>
 
+#include <logging.h>
 #include <arith_uint256.h>
 #include <chain.h>
 #include <primitives/block.h>
@@ -81,14 +82,17 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 
     bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
 
+    LogPrintf("%s: hash %d nBits %d powLimit %d bnTarget %d\n", __func__, &hash, &nBits, &params.powLimit, &bnTarget);
+
     // Check range
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(params.powLimit))
     {
         return false;
     }
-
+    LogPrintf("Range OK\n");
     // Check proof of work matches claimed amount
     if (UintToArith256(hash) > bnTarget) {
+        LogPrintf("But UintToArith256(hash) %s > bnTarget %d\n", UintToArith256(hash).ToString(), &bnTarget);
         return false;
     }
     

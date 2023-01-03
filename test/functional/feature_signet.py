@@ -39,6 +39,14 @@ class SignetBasicTest(BGLTestFramework):
             shared_args3, shared_args3,
         ]
 
+    def setup_network(self):
+        self.setup_nodes()
+
+        # Setup the three signets, which are incompatible with each other
+        self.connect_nodes(0, 1)
+        self.connect_nodes(2, 3)
+        self.connect_nodes(4, 5)
+
     def run_test(self):
         self.log.info("basic tests using OP_TRUE challenge")
 
@@ -54,7 +62,7 @@ class SignetBasicTest(BGLTestFramework):
         self.generate(self.nodes[0], 1, sync_fun=self.no_op)
 
         self.log.info("pregenerated signet blocks check")
-
+        # return
         height = 0
         for block in signet_blocks:
             assert_equal(self.nodes[2].submitblock(block), None)
