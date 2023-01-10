@@ -124,6 +124,8 @@ class PSBTTest(BGLTestFramework):
 
         # Sign the transaction and send
         signed_tx = self.nodes[0].walletprocesspsbt(psbtx)['psbt']
+        
+        
         final_tx = self.nodes[0].finalizepsbt(signed_tx)['hex']
         self.nodes[0].sendrawtransaction(final_tx)
 
@@ -195,14 +197,16 @@ class PSBTTest(BGLTestFramework):
         walletprocesspsbt_out = self.nodes[1].walletprocesspsbt(created_psbt['psbt'])
         # Make sure it has both types of UTXOs
         decoded = self.nodes[1].decodepsbt(walletprocesspsbt_out['psbt'])
+        self.log.info(decoded)
         assert 'non_witness_utxo' in decoded['inputs'][0]
         assert 'witness_utxo' in decoded['inputs'][0]
         # Check decodepsbt fee calculation (input values shall only be counted once per UTXO)
         assert_equal(decoded['fee'], created_psbt['fee'])
         assert_equal(walletprocesspsbt_out['complete'], True)
+        
         self.nodes[1].sendrawtransaction(self.nodes[1].finalizepsbt(walletprocesspsbt_out['psbt'])['hex'])
 
-        self.log.info("Test walletcreatefundedpsbt fee rate of 10000 sat/vB and 0.1 BGL/kvB produces a total fee at or slightly below -maxtxfee (~0.05290000)")
+        self.log.info("Test walletcreatefundedpsbt fee rate of 10000 sat/vB and 0.1 BGL/kvB produces a total fee at or slightly below -maxtxfee (~0.04500000)")
         res1 = self.nodes[1].walletcreatefundedpsbt(inputs, outputs, 0, {"fee_rate": 10000, "add_inputs": True})
         assert_approx(res1["fee"], 0.045, 0.005)
         res2 = self.nodes[1].walletcreatefundedpsbt(inputs, outputs, 0, {"feeRate": "0.1", "add_inputs": True})
@@ -290,6 +294,7 @@ class PSBTTest(BGLTestFramework):
         # partially sign with node 2. This should be complete and sendable
         walletprocesspsbt_out = self.nodes[2].walletprocesspsbt(psbtx)
         assert_equal(walletprocesspsbt_out['complete'], True)
+        
         self.nodes[2].sendrawtransaction(self.nodes[2].finalizepsbt(walletprocesspsbt_out['psbt'])['hex'])
 
         # check that walletprocesspsbt fails to decode a non-psbt
@@ -327,10 +332,11 @@ class PSBTTest(BGLTestFramework):
 
         # Create a psbt spending outputs from nodes 1 and 2
         psbt_orig = self.nodes[0].createpsbt([{"txid":txid1,  "vout":vout1}, {"txid":txid2, "vout":vout2}], {self.nodes[0].getnewaddress():25.999})
-
+        
         # Update psbts, should only have data for one input and not the other
         psbt1 = self.nodes[1].walletprocesspsbt(psbt_orig, False, "ALL")['psbt']
         psbt1_decoded = self.nodes[0].decodepsbt(psbt1)
+        
         assert psbt1_decoded['inputs'][0] and not psbt1_decoded['inputs'][1]
         # Check that BIP32 path was added
         assert "bip32_derivs" in psbt1_decoded['inputs'][0]
@@ -343,15 +349,21 @@ class PSBTTest(BGLTestFramework):
         # Sign PSBTs (workaround issue #18039)
         psbt1 = self.nodes[1].walletprocesspsbt(psbt_orig)['psbt']
         psbt2 = self.nodes[2].walletprocesspsbt(psbt_orig)['psbt']
-
+        self.log.info(psbt1)
+        self.log.info(psbt2)
+        self.log.info(self.nodes[0].analyzepsbt(psbt1))
+        self.log.info(self.nodes[0].analyzepsbt(psbt2))
         # Combine, finalize, and send the psbts
         combined = self.nodes[0].combinepsbt([psbt1, psbt2])
+        self.log.info(combined)
+        self.log.info(self.nodes[0].analyzepsbt(combined))
         finalized = self.nodes[0].finalizepsbt(combined)
         self.log.info("analyzed")
         #self.log.info(self.nodes[0].analyzepsbt(finalized['hex']))
         self.log.info("finalized")
         self.log.info(finalized)
         finalized = finalized['hex']
+        
         #self.log.info(self.nodes[0].converttopsbt(finalized))
         self.nodes[0].sendrawtransaction(finalized)
         self.generate(self.nodes[0], 6)
@@ -460,6 +472,9 @@ class PSBTTest(BGLTestFramework):
         # Creator Tests
         for creator in creators:
             created_tx = self.nodes[0].createpsbt(creator['inputs'], creator['outputs'])
+            analysis = self.nodes[0].analyzepsbt(created_tx)
+            self.log.info("analysing creator...")
+            self.log.info(analysis)
             assert_equal(created_tx, creator['result'])
 
         # Signer tests
@@ -481,6 +496,8 @@ class PSBTTest(BGLTestFramework):
 
         # Finalizer test
         for finalizer in finalizers:
+            self.log.info(self.nodes[2].analyzepsbt(finalizer['finalize']))
+            
             finalized = self.nodes[2].finalizepsbt(finalizer['finalize'], False)['psbt']
             assert_equal(finalized, finalizer['result'])
 
@@ -601,24 +618,9 @@ class PSBTTest(BGLTestFramework):
         assert_equal(analysis['next'], 'creator')
         assert_equal(analysis['error'], 'PSBT is not valid. Input 0 spends unspendable output')
 
-        self.log.info("PSBT with invalid values should have error message and Creator as next")
-        #analysis = self.nodes[0].analyzepsbt('cHNidP8BAHECAAAAAfA00BFgAm6tp86RowwH6BMImQNL5zXUcTT97XoLGz0BAAAAAAD/////AgD5ApUAAAAAFgAUKNw0x8HRctAgmvoevm4u1SbN7XL87QKVAAAAABYAFPck4gF7iL4NL4wtfRAKgQbghiTUAAAAAAABAR8AgIFq49AHABYAFJUDtxf2PHo641HEOBOAIvFMNTr2AAAA')
-        #assert_equal(analysis['next'], 'creator')
-        #assert_equal(analysis['error'], 'PSBT is not valid. Input 0 has invalid value')
-
         self.log.info("PSBT with signed, but not finalized, inputs should have Finalizer as next")
-        #analysis = self.nodes[0].analyzepsbt('cHNidP8BAHECAAAAAZYezcxdnbXoQCmrD79t/LzDgtUo9ERqixk8wgioAobrAAAAAAD9////AlDDAAAAAAAAFgAUy/UxxZuzZswcmFnN/E9DGSiHLUsuGPUFAAAAABYAFLsH5o0R38wXx+X2cCosTMCZnQ4baAAAAAABAR8A4fUFAAAAABYAFOBI2h5thf3+Lflb2LGCsVSZwsltIgIC/i4dtVARCRWtROG0HHoGcaVklzJUcwo5homgGkSNAnJHMEQCIGx7zKcMIGr7cEES9BR4Kdt/pzPTK3fKWcGyCJXb7MVnAiALOBgqlMH4GbC1HDh/HmylmO54fyEy4lKde7/BT/PWxwEBAwQBAAAAIgYC/i4dtVARCRWtROG0HHoGcaVklzJUcwo5homgGkSNAnIYDwVpQ1QAAIABAACAAAAAgAAAAAAAAAAAAAAiAgL+CIiB59NSCssOJRGiMYQK1chahgAaaJpIXE41Cyir+xgPBWlDVAAAgAEAAIAAAACAAQAAAAAAAAAA')
+        #analysis = self.nodes[0].analyzepsbt('cHNidP8BAJ0CAAAAAkfAuvwz2d5mJSlPtaugexjhenXuaN5cfXOE8KPDd4iFAQAAAAD/////ELViaS3/rjxJihEMP72Iqqb5O5oGBLTWrTpXIt3d4L4BAAAAAP7///8CXCvDIwAAAAAZdqkUDIzDsj6qlzV78y3H/tuYoo/VRHmIrAAvaFkAAAAAFgAUo0ixNHab1mu7i/t8ex7jcTxp2UEAAAAAAAABAHICAAAAAVrj9FACX+pSNYD2yAPDFK2a0Eq25SQhO+vkLIxknnNaAAAAAAD9////AugRh2YEAAAAFgAULUun/+/Zs4izlOeM9kSBGdk3uBAAq5BBAAAAABepFNBv/zYA0Tw1LKNgSdN7BfV+CH8sh9oAAAABASAAq5BBAAAAABepFNBv/zYA0Tw1LKNgSdN7BfV+CH8shwEHFxYAFCO6tjp2MRfShYwnZGqDN/HU7Si/AQhrAkcwRAIgBHiD151t5uU2SZZzXrYq4kXOsDFn0x5dG5+EdOAmkBcCIFBU20uNb33EqWw8i3PqA6OhhsLER9ePpMKJ8fpiQjmCASECnqHkDjX3K1GUKVjmwq9JBLYmG13uiSM9/4vuE1Tb6HMAIgIDyA4vwcLLwd4kYnXtNUk68oUYZHZtv3rR+qnh84QVXAoQxzSoZQAAAIABAACAHwAAgAAA')
         #assert_equal(analysis['next'], 'finalizer')
-
-        analysis = self.nodes[0].analyzepsbt('cHNidP8BAHECAAAAAfA00BFgAm6tp86RowwH6BMImQNL5zXUcTT97XoLGz0BAAAAAAD/////AgCAgWrj0AcAFgAUKNw0x8HRctAgmvoevm4u1SbN7XL87QKVAAAAABYAFPck4gF7iL4NL4wtfRAKgQbghiTUAAAAAAABAR8A8gUqAQAAABYAFJUDtxf2PHo641HEOBOAIvFMNTr2AAAA')
-        #assert_equal(analysis['next'], 'creator')
-        #assert_equal(analysis['error'], 'PSBT is not valid. Output amount invalid')
-
-        #analysis = self.nodes[0].analyzepsbt('cHNidP8BAJoCAAAAAkvEW8NnDtdNtDpsmze+Ht2LH35IJcKv00jKAlUs21RrAwAAAAD/////S8Rbw2cO1020OmybN74e3Ysffkglwq/TSMoCVSzbVGsBAAAAAP7///8CwLYClQAAAAAWABSNJKzjaUb3uOxixsvh1GGE3fW7zQD5ApUAAAAAFgAUKNw0x8HRctAgmvoevm4u1SbN7XIAAAAAAAEAnQIAAAACczMa321tVHuN4GKWKRncycI22aX3uXgwSFUKM2orjRsBAAAAAP7///9zMxrfbW1Ue43gYpYpGdzJwjbZpfe5eDBIVQozaiuNGwAAAAAA/v///wIA+QKVAAAAABl2qRT9zXUVA8Ls5iVqynLHe5/vSe1XyYisQM0ClQAAAAAWABRmWQUcjSjghQ8/uH4Bn/zkakwLtAAAAAAAAQEfQM0ClQAAAAAWABRmWQUcjSjghQ8/uH4Bn/zkakwLtAAAAA==')
-        #assert_equal(analysis['next'], 'creator')
-        #assert_equal(analysis['error'], 'PSBT is not valid. Input 0 specifies invalid prevout')
-
-        #assert_raises_rpc_error(-25, 'Inputs missing or spent', self.nodes[0].walletprocesspsbt, 'cHNidP8BAJoCAAAAAkvEW8NnDtdNtDpsmze+Ht2LH35IJcKv00jKAlUs21RrAwAAAAD/////S8Rbw2cO1020OmybN74e3Ysffkglwq/TSMoCVSzbVGsBAAAAAP7///8CwLYClQAAAAAWABSNJKzjaUb3uOxixsvh1GGE3fW7zQD5ApUAAAAAFgAUKNw0x8HRctAgmvoevm4u1SbN7XIAAAAAAAEAnQIAAAACczMa321tVHuN4GKWKRncycI22aX3uXgwSFUKM2orjRsBAAAAAP7///9zMxrfbW1Ue43gYpYpGdzJwjbZpfe5eDBIVQozaiuNGwAAAAAA/v///wIA+QKVAAAAABl2qRT9zXUVA8Ls5iVqynLHe5/vSe1XyYisQM0ClQAAAAAWABRmWQUcjSjghQ8/uH4Bn/zkakwLtAAAAAAAAQEfQM0ClQAAAAAWABRmWQUcjSjghQ8/uH4Bn/zkakwLtAAAAA==')
 
         # Test that we can fund psbts with external inputs specified
         eckey = ECKey()
@@ -646,6 +648,7 @@ class PSBTTest(BGLTestFramework):
         # But funding should work when the solving data is provided
         psbt = self.nodes[1].walletcreatefundedpsbt([ext_utxo], {self.nodes[0].getnewaddress(): 15}, 0, {'add_inputs': True, "solving_data": {"pubkeys": [addr_info['pubkey']], "scripts": [addr_info["embedded"]["scriptPubKey"]]}})
         signed = self.nodes[1].walletprocesspsbt(psbt['psbt'])
+        self.log.info(self.nodes[1].analyzepsbt(signed['psbt']))
         assert not signed['complete']
         signed = self.nodes[0].walletprocesspsbt(signed['psbt'])
         assert signed['complete']
@@ -654,9 +657,12 @@ class PSBTTest(BGLTestFramework):
         psbt = self.nodes[1].walletcreatefundedpsbt([ext_utxo], {self.nodes[0].getnewaddress(): 15}, 0, {'add_inputs': True, "solving_data":{"descriptors": [desc]}})
         signed = self.nodes[1].walletprocesspsbt(psbt['psbt'])
         assert not signed['complete']
+        self.log.info(self.nodes[0].analyzepsbt(signed['psbt']))
         signed = self.nodes[0].walletprocesspsbt(signed['psbt'])
         assert signed['complete']
+        
         self.nodes[0].finalizepsbt(signed['psbt'])
+        self.log.info(self.nodes[0].analyzepsbt(signed['psbt']))
 
 if __name__ == '__main__':
     PSBTTest().main()

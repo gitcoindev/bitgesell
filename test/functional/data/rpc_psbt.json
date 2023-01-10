@@ -53,6 +53,27 @@
                 }
             ],
             "result" : "cHNidP8BAJoCAAAAAljoeiG1ba8MI76OcHBFbDNvfLqlyHV5JPVFiHuyq911AAAAAAD/////g40EJ9DsZQpoqka7CwmK6kQiwHGyyng1Kgd5WdB86h0BAAAAAP////8CcKrwCAAAAAAWABQAdrHkluyVIN9kTGNDwnF3G70u6QDh9QUAAAAAFgAUAK/J+79H5lkiPo13mOL68UguP1AAAAAAAAAAAAA="
+        },
+        {
+            "inputs" : [
+                {
+                    "txid":"75ddabb27b8845f5247975c8a5ba7c6f336c4570708ebe230caf6db5217ae858",
+                    "vout":111
+                },
+                {
+                    "txid":"1dea7cd05979072a3578cab271c02244ea8a090bbb46aa680a65ecd027048d83",
+                    "vout":222
+                }
+            ],
+            "outputs" : [
+                {
+                    "rbgl1qqpmtreykaj2jphmyf3358sn3wudm6thfypzzut":1.49990000
+                },
+                {
+                    "rbgl1qqzhun7algln9jg3734me3ch679yzu06spda08r": 1
+                }
+            ],
+            "result" : "cHNidP8BAJoCAAAAAljoeiG1ba8MI76OcHBFbDNvfLqlyHV5JPVFiHuyq911bwAAAAD/////g40EJ9DsZQpoqka7CwmK6kQiwHGyyng1Kgd5WdB86h3eAAAAAP////8CcKrwCAAAAAAWABQAdrHkluyVIN9kTGNDwnF3G70u6QDh9QUAAAAAFgAUAK/J+79H5lkiPo13mOL68UguP1AAAAAAAAAAAAA="
         }
     ],
     "signer" : [
