@@ -88,7 +88,11 @@ std::string ScriptErrorString(const ScriptError serror)
         case SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY:
             return "Witness program was passed an empty witness";
         case SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH:
-            return "Witness program hash mismatch";
+            return "Witness program hash mismatch 1";
+        case SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH2:
+            return "Witness program hash mismatch 2";
+        case SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH3:
+            return "Witness program hash mismatch 3";
         case SCRIPT_ERR_WITNESS_MALLEATED:
             return "Witness requires empty scriptSig";
         case SCRIPT_ERR_WITNESS_MALLEATED_P2SH:

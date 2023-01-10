@@ -15,7 +15,7 @@ from typing import (
 )
 from test_framework.address import (
     base58_to_byte,
-    ADDRESS_BCRT1_P2WSH_OP_TRUE,
+    create_deterministic_address_bcrt1_p2tr_op_true,
     key_to_p2pkh,
     key_to_p2sh_p2wpkh,
     key_to_p2wpkh,
@@ -39,6 +39,9 @@ from test_framework.messages import (
 from test_framework.script import (
     CScript,
     LegacySignatureHash,
+    LEAF_VERSION_TAPSCRIPT,
+    OP_NOP,
+    OP_RETURN,
     OP_TRUE,
     OP_NOP,
     SIGHASH_ALL,
@@ -64,7 +67,7 @@ class MiniWalletMode(Enum):
     """Determines the transaction type the MiniWallet is creating and spending.
 
     For most purposes, the default mode ADDRESS_OP_TRUE should be sufficient;
-    it simply uses a fixed bech32 P2WSH address whose coins are spent with a
+    it simply uses a fixed bech32m P2TR address whose coins are spent with a
     witness stack of OP_TRUE, i.e. following an anyone-can-spend policy.
     However, if the transactions need to be modified by the user (e.g. prepending
     scriptSig for testing opcodes that are activated by a soft-fork), or the txs
@@ -87,6 +90,7 @@ class MiniWallet:
     def __init__(self, test_node, *, mode=MiniWalletMode.ADDRESS_OP_TRUE):
         self._test_node = test_node
         self._utxos = []
+        self._mode = mode
         self._priv_key = None
         self._address = None
 
@@ -100,7 +104,7 @@ class MiniWallet:
             pub_key = self._priv_key.get_pubkey()
             self._scriptPubKey = key_to_p2pk_script(pub_key.get_bytes())
         elif mode == MiniWalletMode.ADDRESS_OP_TRUE:
-            self._address = ADDRESS_BCRT1_P2WSH_OP_TRUE
+            self._address, self._internal_key = create_deterministic_address_bcrt1_p2tr_op_true()
             self._scriptPubKey = bytes.fromhex(self._test_node.validateaddress(self._address)['scriptPubKey'])
 
     def _create_utxo(self, *, txid, vout, value, height):
@@ -283,7 +287,7 @@ class MiniWallet:
         """Create and return a tx with the specified fee. If fee is 0, use fee_rate, where the resulting fee may be exact or at most one satoshi higher than needed."""
         utxo_to_spend = utxo_to_spend or self.get_utxo()
         if self._priv_key is None:
-            vsize = Decimal(96)  # anyone-can-spend
+            vsize = Decimal(104)  # anyone-can-spend
         else:
             vsize = Decimal(168)  # P2PK (73 bytes scriptSig + 35 bytes scriptPubKey + 60 bytes other)
         send_value = utxo_to_spend["value"] - (fee or (fee_rate * vsize / 1000))
@@ -303,7 +307,7 @@ class MiniWallet:
                 tx.vin[0].scriptSig = CScript([OP_NOP] * 35)  # pad to identical size
         else:
             tx.wit.vtxinwit = [CTxInWitness()]
-            tx.wit.vtxinwit[0].scriptWitness.stack = [CScript([OP_TRUE])]
+            tx.wit.vtxinwit[0].scriptWitness.stack = [CScript([OP_TRUE]), bytes([LEAF_VERSION_TAPSCRIPT]) + self._internal_key]
         tx_hex = tx.serialize().hex()
 
         assert_equal(tx.get_vsize(), vsize)

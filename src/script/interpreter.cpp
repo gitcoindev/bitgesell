@@ -1906,7 +1906,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         } else if (program.size() == WITNESS_V0_KEYHASH_SIZE) {
             // BIP141 P2WPKH: 20-byte witness v0 program (which encodes Hash160(pubkey))
             if (stack.size() != 2) {
-                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH); // 2 items in witness
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH2); // 2 items in witness
             }
             exec_script << OP_DUP << OP_HASH160 << program << OP_EQUALVERIFY << OP_CHECKSIG;
             return ExecuteWitnessScript(stack, exec_script, flags, SigVersion::WITNESS_V0, checker, execdata, serror);
@@ -1942,7 +1942,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             }
             execdata.m_tapleaf_hash = ComputeTapleafHash(control[0] & TAPROOT_LEAF_MASK, exec_script);
             if (!VerifyTaprootCommitment(control, program, execdata.m_tapleaf_hash)) {
-                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+                return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH3);
             }
             execdata.m_tapleaf_hash_init = true;
             if ((control[0] & TAPROOT_LEAF_MASK) == TAPROOT_LEAF_TAPSCRIPT) {
