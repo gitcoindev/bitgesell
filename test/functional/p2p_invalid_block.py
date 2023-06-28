@@ -70,8 +70,8 @@ class InvalidBlockRequestTest(BGLTestFramework):
         # For more information on merkle-root malleability see src/consensus/merkle.cpp.
         self.log.info("Test merkle root malleability.")
 
-        tx1 = create_tx_with_script(block1.vtx[0], 0, script_sig=bytes([OP_TRUE]), amount=50 * COIN)
-        tx2 = create_tx_with_script(tx1, 0, script_sig=bytes([OP_TRUE]), amount=50 * COIN)
+        tx1 = create_tx_with_script(block1.vtx[0], 0, script_sig=bytes([OP_TRUE]), amount=200 * COIN)
+        tx2 = create_tx_with_script(tx1, 0, script_sig=bytes([OP_TRUE]), amount=200 * COIN)
         block2 = create_block(tip, create_coinbase(height), block_time, txlist=[tx1, tx2])
         block_time += 1
         block2.solve()
@@ -98,7 +98,7 @@ class InvalidBlockRequestTest(BGLTestFramework):
 
         self.log.info("Test very broken block.")
 
-        block3 = create_block(tip, create_coinbase(height, nValue=100), block_time)
+        block3 = create_block(tip, create_coinbase(height, nValue=400), block_time)
         block_time += 1
         block3.solve()
 
@@ -118,7 +118,7 @@ class InvalidBlockRequestTest(BGLTestFramework):
 
         # Complete testing of CVE-2018-17144, by checking for the inflation bug.
         # Create a block that spends the output of a tx in a previous block.
-        tx3 = create_tx_with_script(tx2, 0, script_sig=bytes([OP_TRUE]), amount=50 * COIN)
+        tx3 = create_tx_with_script(tx2, 0, script_sig=bytes([OP_TRUE]), amount=200 * COIN)
         tx3.vin.append(tx3.vin[0])  # Duplicates input
         tx3.rehash()
         block4 = create_block(tip, create_coinbase(height), block_time, txlist=[tx3])
@@ -131,6 +131,7 @@ class InvalidBlockRequestTest(BGLTestFramework):
         node.setmocktime(t)
         # Set block time +1 second past max future validity
         block = create_block(tip, create_coinbase(height), t + MAX_FUTURE_BLOCK_TIME + 1)
+        block.hashMerkleRoot = block.calc_merkle_root()
         block.solve()
         # Need force_send because the block will get rejected without a getdata otherwise
         peer.send_blocks_and_test([block], node, force_send=True, success=False, reject_reason='time-too-new')

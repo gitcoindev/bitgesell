@@ -55,9 +55,10 @@ class RejectLowDifficultyHeadersTest(BGLTestFramework):
         for node in self.nodes[1:3]:
             chaintips = node.getchaintips()
             assert(len(chaintips) == 1)
+            self.log.info(chaintips)
             assert {
                 'height': 0,
-                'hash': '0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206',
+                'hash': '2e14eaec9745ec9690602feddf650eb6e436d32a3ae8453cf6a90ef1d53a6c42',
                 'branchlen': 0,
                 'status': 'active',
             } in chaintips
@@ -69,7 +70,7 @@ class RejectLowDifficultyHeadersTest(BGLTestFramework):
 
         assert {
             'height': 0,
-            'hash': '0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206',
+            'hash': '2e14eaec9745ec9690602feddf650eb6e436d32a3ae8453cf6a90ef1d53a6c42',
             'branchlen': 0,
             'status': 'active',
         } in self.nodes[2].getchaintips()
